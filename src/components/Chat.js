@@ -16,9 +16,9 @@ export const Chat = ({ room }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const messagesRef = collection(db, "messages");
 
   useEffect(() => {
+    const messagesRef = collection(db, "messages");
     const queryMessages = query(
       messagesRef,
       where("room", "==", room),
@@ -31,7 +31,10 @@ export const Chat = ({ room }) => {
         messages.push({ ...doc.data(), id: doc.id });
       });
       console.log(messages);
-      setMessages(messages);
+      setMessages((prevMessages) => {
+        // Using functional update to ensure correct state when messagesRef changes
+        return [...prevMessages, ...messages];
+      });
     });
 
     return () => unsubscribe();
@@ -39,6 +42,7 @@ export const Chat = ({ room }) => {
 
   const addTypingStatus = async (isTyping) => {
     if (auth.currentUser) {
+      const messagesRef = collection(db, "messages");
       await addDoc(messagesRef, {
         text: "",
         createdAt: serverTimestamp(),
@@ -58,6 +62,7 @@ export const Chat = ({ room }) => {
 
     if (newMessage.trim() === "") return;
 
+    const messagesRef = collection(db, "messages");
     const newMessageObj = {
       text: newMessage,
       createdAt: serverTimestamp(),
@@ -91,7 +96,14 @@ export const Chat = ({ room }) => {
           </div>
         ))}
       </div>
-      <form onSubmit={handleSubmit} className="new-message-form">
+      <form
+        onSubmit={(event) => {
+          handleSubmit(event);
+          setIsTyping(false);
+          addTypingStatus(false);
+        }}
+        className="new-message-form"
+      >
         <input
           type="text"
           value={newMessage}
